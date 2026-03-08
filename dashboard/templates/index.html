@@ -372,6 +372,10 @@
             console.log('Connected to server');
             // Auto-start bot on connect
             startBot();
+            // Update UI status
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = 'RUNNING';
+            statusEl.className = 'status running';
         });
         
         socket.on('update', (data) => {
