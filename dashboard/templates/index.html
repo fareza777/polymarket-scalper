@@ -370,6 +370,8 @@
         
         socket.on('connect', () => {
             console.log('Connected to server');
+            // Auto-start bot on connect
+            startBot();
         });
         
         socket.on('update', (data) => {
