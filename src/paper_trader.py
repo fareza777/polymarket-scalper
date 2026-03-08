@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from polymarket_api import PolymarketAPI
 from spread_detector import Signal
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class PaperPosition:
 class PaperTrader:
     """Execute paper trades with real market data"""
     
-    def __init__(self, api: PolymarketAPI):
+    def __init__(self, api):
         self.api = api
         self.positions: Dict[str, PaperPosition] = {}
         self.trade_history: List[PaperPosition] = []
