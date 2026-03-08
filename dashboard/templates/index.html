@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polymarket Scalper - Dashboard</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e27;
+            color: #fff;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .status.running {
+            background: #10b981;
+        }
+        
+        .status.stopped {
+            background: #ef4444;
+        }
+        
+        .controls {
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-start {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-start:hover {
+            background: #059669;
+        }
+        
+        .btn-stop {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-stop:hover {
+            background: #dc2626;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #1a1f3a;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #2d3561;
+        }
+        
+        .stat-card h3 {
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        
+        .stat-value.positive {
+            color: #10b981;
+        }
+        
+        .stat-value.negative {
+            color: #ef4444;
+        }
+        
+        .stat-value.neutral {
+            color: #f59e0b;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: #1a1f3a;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #2d3561;
+        }
+        
+        .chart-card h3 {
+            margin-bottom: 15px;
+            color: #94a3b8;
+        }
+        
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        
+        .table-card {
+            background: #1a1f3a;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #2d3561;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .table-card h3 {
+            margin-bottom: 15px;
+            color: #94a3b8;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #2d3561;
+        }
+        
+        th {
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .badge-buy {
+            background: #10b981;
+            color: white;
+        }
+        
+        .badge-sell {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .update-time {
+            text-align: center;
+            color: #64748b;
+            padding: 20px;
+            font-size: 14px;
+        }
+        
+        canvas {
+            max-height: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 Polymarket Scalper Bot</h1>
+        <span id="status" class="status stopped">STOPPED</span>
+    </div>
+    
+    <div class="controls">
+        <button class="btn btn-start" onclick="startBot()">▶ Start Bot</button>
+        <button class="btn btn-stop" onclick="stopBot()">⏹ Stop Bot</button>
+    </div>
+    
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Daily P&L</h3>
+                <div id="daily-pnl" class="stat-value neutral">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <h3>Open P&L</h3>
+                <div id="open-pnl" class="stat-value neutral">$0.00</div>
+            </div>
+            <div class="stat-card">
+                <h3>Trades Executed</h3>
+                <div id="trades-count" class="stat-value neutral">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Signals Generated</h3>
+                <div id="signals-count" class="stat-value neutral">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Open Positions</h3>
+                <div id="open-positions" class="stat-value neutral">0/3</div>
+            </div>
+            <div class="stat-card">
+                <h3>Win Rate</h3>
+                <div id="win-rate" class="stat-value neutral">0%</div>
+            </div>
+        </div>
+        
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>P&L Over Time</h3>
+                <canvas id="pnlChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Trade Volume</h3>
+                <canvas id="volumeChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="tables-grid">
+            <div class="table-card">
+                <h3>Recent Trades</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Market</th>
+                            <th>Side</th>
+                            <th>P&L</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trades-table">
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-card">
+                <h3>Recent Signals</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Market</th>
+                            <th>Spread</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="signals-table">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="update-time">
+            Last update: <span id="last-update">Never</span>
+        </div>
+    </div>
+    
+    <script>
+        const socket = io();
+        
+        // Charts
+        const pnlCtx = document.getElementById('pnlChart').getContext('2d');
+        const volumeCtx = document.getElementById('volumeChart').getContext('2d');
+        
+        const pnlChart = new Chart(pnlCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Cumulative P&L',
+                    data: [],
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#2d3561' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+        
+        const volumeChart = new Chart(volumeCtx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Trade Volume',
+                    data: [],
+                    backgroundColor: '#667eea',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#2d3561' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+        
+        let pnlHistory = [];
+        let volumeHistory = [];
+        
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+        
+        socket.on('update', (data) => {
+            updateDashboard(data);
+        });
+        
+        socket.on('bot_status', (data) => {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = data.status.toUpperCase();
+            statusEl.className = `status ${data.status}`;
+        });
+        
+        function updateDashboard(data) {
+            const stats = data.stats;
+            
+            // Update stats
+            updateStat('daily-pnl', stats.daily_pnl, '$');
+            updateStat('open-pnl', stats.open_pnl, '$');
+            document.getElementById('trades-count').textContent = stats.trades_executed;
+            document.getElementById('signals-count').textContent = stats.signals_generated;
+            document.getElementById('open-positions').textContent = `${stats.open_positions}/3`;
+            document.getElementById('win-rate').textContent = `${stats.win_rate.toFixed(1)}%`;
+            
+            // Update charts
+            if (stats.daily_pnl !== undefined) {
+                pnlHistory.push(stats.daily_pnl);
+                if (pnlHistory.length > 20) pnlHistory.shift();
+                
+                pnlChart.data.labels = pnlHistory.map((_, i) => i);
+                pnlChart.data.datasets[0].data = pnlHistory;
+                pnlChart.update('none');
+            }
+            
+            if (stats.total_volume !== undefined) {
+                volumeHistory.push(stats.total_volume);
+                if (volumeHistory.length > 20) volumeHistory.shift();
+                
+                volumeChart.data.labels = volumeHistory.map((_, i) => i);
+                volumeChart.data.datasets[0].data = volumeHistory;
+                volumeChart.update('none');
+            }
+            
+            // Update tables
+            updateTradesTable(data.trades);
+            updateSignalsTable(data.signals);
+            
+            // Update time
+            if (stats.last_update) {
+                document.getElementById('last-update').textContent = 
+                    new Date(stats.last_update).toLocaleString();
+            }
+        }
+        
+        function updateStat(id, value, prefix = '') {
+            const el = document.getElementById(id);
+            el.textContent = `${prefix}${value.toFixed(2)}`;
+            el.className = 'stat-value ' + (value >= 0 ? 'positive' : 'negative');
+        }
+        
+        function updateTradesTable(trades) {
+            const tbody = document.getElementById('trades-table');
+            tbody.innerHTML = trades.slice().reverse().map(t => `
+                <tr>
+                    <td>${new Date(t.timestamp).toLocaleTimeString()}</td>
+                    <td>${t.asset_id}</td>
+                    <td><span class="badge badge-${t.side}">${t.side.toUpperCase()}</span></td>
+                    <td class="${t.pnl >= 0 ? 'positive' : 'negative'}">${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        function updateSignalsTable(signals) {
+            const tbody = document.getElementById('signals-table');
+            tbody.innerHTML = signals.slice().reverse().map(s => `
+                <tr>
+                    <td>${new Date(s.timestamp).toLocaleTimeString()}</td>
+                    <td>${s.asset_id}</td>
+                    <td>${s.spread_pct.toFixed(2)}%</td>
+                    <td>${(s.confidence * 100).toFixed(0)}%</td>
+                </tr>
+            `).join('');
+        }
+        
+        function startBot() {
+            socket.emit('start_bot');
+        }
+        
+        function stopBot() {
+            socket.emit('stop_bot');
+        }
+    </script>
+</body>
+</html>
