@@ -33,43 +33,55 @@ class PolymarketAPI:
         if not self.session:
             return []
         
-        try:
-            url = f"{self.base_url}/markets"
-            params = {
-                "active": str(active).lower(),
-                "limit": limit
-            }
-            
-            async with self.session.get(url, params=params) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return data.get("markets", [])
+        # Try with retries
+        for attempt in range(3):
+            try:
+                url = f"{self.base_url}/markets"
+                params = {
+                    "active": str(active).lower(),
+                    "limit": limit
+                }
+                
+                async with self.session.get(url, params=params, timeout=10) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("markets", [])
+                    else:
+                        logger.error(f"Failed to get markets: {resp.status}")
+                        return []
+                        
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1} failed: {e}")
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
                 else:
-                    logger.error(f"Failed to get markets: {resp.status}")
+                    logger.error(f"All attempts failed: {e}")
                     return []
-                    
-        except Exception as e:
-            logger.error(f"Error fetching markets: {e}")
-            return []
     
     async def get_orderbook(self, token_id: str) -> Optional[Dict]:
         """Get orderbook for a token"""
         if not self.session:
             return None
         
-        try:
-            url = f"{self.base_url}/orderbook/{token_id}"
-            
-            async with self.session.get(url) as resp:
-                if resp.status == 200:
-                    return await resp.json()
+        # Try with retries
+        for attempt in range(3):
+            try:
+                url = f"{self.base_url}/orderbook/{token_id}"
+                
+                async with self.session.get(url, timeout=10) as resp:
+                    if resp.status == 200:
+                        return await resp.json()
+                    else:
+                        logger.error(f"Failed to get orderbook: {resp.status}")
+                        return None
+                        
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1} failed for {token_id[:20]}: {e}")
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
                 else:
-                    logger.error(f"Failed to get orderbook: {resp.status}")
+                    logger.error(f"All attempts failed: {e}")
                     return None
-                    
-        except Exception as e:
-            logger.error(f"Error fetching orderbook: {e}")
-            return None
     
     async def get_market_info(self, condition_id: str) -> Optional[Dict]:
         """Get market info by condition ID"""
