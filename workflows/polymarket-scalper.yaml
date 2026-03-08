@@ -1,0 +1,204 @@
+id: polymarket-scalper
+name: Polymarket Scalper Bot
+description: Real-time spread scalping bot for Polymarket prediction markets
+version: 1.0.0
+
+agents:
+  - id: architect
+    name: Architect
+    workspace:
+      files:
+        AGENTS.md: agents/architect/AGENTS.md
+        requirements.txt: agents/architect/requirements.txt
+    
+  - id: connector
+    name: WebSocket Connector
+    workspace:
+      files:
+        AGENTS.md: agents/connector/AGENTS.md
+        
+  - id: data-aggregator
+    name: Data Aggregator
+    workspace:
+      files:
+        AGENTS.md: agents/data-aggregator/AGENTS.md
+        
+  - id: spread-detector
+    name: Spread Detector
+    workspace:
+      files:
+        AGENTS.md: agents/spread-detector/AGENTS.md
+        
+  - id: trade-executor
+    name: Trade Executor
+    workspace:
+      files:
+        AGENTS.md: agents/trade-executor/AGENTS.md
+        
+  - id: risk-manager
+    name: Risk Manager
+    workspace:
+      files:
+        AGENTS.md: agents/risk-manager/AGENTS.md
+        
+  - id: tester
+    name: Integration Tester
+    workspace:
+      files:
+        AGENTS.md: agents/tester/AGENTS.md
+
+steps:
+  - id: design
+    agent: architect
+    description: Design bot architecture and data flow
+    input: |
+      Design a Polymarket scalping bot architecture with:
+      1. WebSocket connection to Polymarket CLOB API
+      2. Real-time orderbook aggregation
+      3. Spread detection algorithm
+      4. Trade execution with $5 USD per trade limit
+      5. Risk management (stop loss, max positions)
+      
+      Create the following files:
+      - src/websocket_client.py - WebSocket connection handler
+      - src/orderbook.py - Orderbook aggregator
+      - src/spread_detector.py - Spread detection logic
+      - src/trade_executor.py - Trade execution
+      - src/risk_manager.py - Risk management
+      - src/config.py - Configuration
+      - src/main.py - Entry point
+      - requirements.txt - Dependencies
+      
+      Reply with STATUS: done and list all created files.
+    expects: "STATUS: done"
+    max_retries: 3
+    
+  - id: implement-websocket
+    agent: connector
+    description: Implement WebSocket connection
+    input: |
+      Implement WebSocket client for Polymarket CLOB API:
+      - Connect to wss://ws-subscriptions-clob.polymarket.com/ws/market
+      - Subscribe to crypto markets
+      - Handle book, price_change, last_trade_price events
+      - Auto-reconnection logic
+      - Heartbeat (PING every 10 seconds)
+      
+      Save to src/websocket_client.py
+      Reply with STATUS: done
+    expects: "STATUS: done"
+    max_retries: 3
+    
+  - id: implement-aggregator
+    agent: data-aggregator
+    description: Implement orderbook aggregator
+    input: |
+      Implement orderbook aggregator:
+      - Maintain real-time orderbook for each market
+      - Calculate best bid/ask
+      - Calculate spread percentage
+      - Track last trade price
+      - Thread-safe data structures
+      
+      Save to src/orderbook.py
+      Reply with STATUS: done
+    expects: "STATUS: done"
+    max_retries: 3
+    
+  - id: implement-detector
+    agent: spread-detector
+    description: Implement spread detection
+    input: |
+      Implement spread detection algorithm:
+      - Monitor spread > 1% for scalping opportunity
+      - Calculate potential profit after fees
+      - Filter by minimum liquidity
+      - Signal generation for buy/sell
+      - Configurable thresholds
+      
+      Save to src/spread_detector.py
+      Reply with STATUS: done
+    expects: "STATUS: done"
+    max_retries: 3
+    
+  - id: implement-executor
+    agent: trade-executor
+    description: Implement trade execution
+    input: |
+      Implement trade executor:
+      - Place orders via Polymarket CLOB API
+      - $5 USD position sizing per trade
+      - Order types: limit orders
+      - Position tracking
+      - P&L calculation
+      - Mock mode for testing
+      
+      Save to src/trade_executor.py
+      Reply with STATUS: done
+    expects: "STATUS: done"
+    max_retries: 3
+    
+  - id: implement-risk
+    agent: risk-manager
+    description: Implement risk management
+    input: |
+      Implement risk manager:
+      - Max 3 concurrent positions
+      - Stop loss at -$2 per position
+      - Daily loss limit $20
+      - Position sizing calculator
+      - Emergency stop
+      
+      Save to src/risk_manager.py
+      Reply with STATUS: done
+    expects: "STATUS: done"
+    max_retries: 3
+    
+  - id: integrate
+    agent: architect
+    description: Integrate all components
+    input: |
+      Create main.py that integrates all components:
+      - Initialize WebSocket client
+      - Start orderbook aggregator
+      - Run spread detector loop
+      - Execute trades via executor
+      - Risk management checks
+      - Graceful shutdown
+      
+      Save to src/main.py
+      Reply with STATUS: done
+    expects: "STATUS: done"
+    max_retries: 3
+    
+  - id: test
+    agent: tester
+    description: Test integration
+    input: |
+      Test the complete bot:
+      1. Verify all imports work
+      2. Test WebSocket connection (mock)
+      3. Test spread detection logic
+      4. Verify risk limits
+      5. Run in paper trading mode
+      
+      Reply with STATUS: done and test results
+    expects: "STATUS: done"
+    max_retries: 3
+    
+  - id: finalize
+    agent: architect
+    description: Finalize and document
+    input: |
+      Finalize the project:
+      1. Update README.md with usage instructions
+      2. Create .env.example
+      3. Add comments to code
+      4. Create run.sh script
+      5. Verify all files are complete
+      
+      Reply with STATUS: done and list of all files
+    expects: "STATUS: done"
+    max_retries: 3
+
+on_failure: escalate
