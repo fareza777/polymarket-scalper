@@ -16,11 +16,15 @@ Dashboard real-time untuk Polymarket Scalper Bot.
 # Install dependencies
 pip install -r requirements.txt
 
-# Jalankan dashboard
+# Jalankan dashboard (default port 5555)
+python app.py
+
+# Atau pilih port lain
+set PORT=5556
 python app.py
 
 # Buka browser
-http://localhost:5000
+http://localhost:5555
 ```
 
 ## Screenshot
