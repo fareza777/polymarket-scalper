@@ -51,7 +51,7 @@ class PaperTradingBot:
     async def start(self):
         """Start the bot"""
         logger.info("=" * 60)
-        logger.info("🤖 Polymarket Paper Trading Bot Starting...")
+        logger.info("Polymarket Paper Trading Bot Starting...")
         logger.info("=" * 60)
         
         self.running = True
@@ -95,14 +95,15 @@ class PaperTradingBot:
         logger.info("Stopping bot...")
         self.running = False
         
-        await self.api.stop()
+        if self.api:
+            await self.api.stop()
         
         self._print_stats()
         logger.info("Bot stopped")
     
     async def _main_loop(self):
         """Main bot loop"""
-        logger.info("Starting main loop...")
+        logger.info("Starting main loop (scanning every 5 seconds)...")
         
         while self.running:
             try:
@@ -179,7 +180,7 @@ class PaperTradingBot:
     async def _on_signal(self, signal: Signal):
         """Handle trading signal"""
         logger.info(
-            f"📊 SIGNAL | {signal.asset_id[:20]}... | "
+            f"SIGNAL | {signal.asset_id[:20]}... | "
             f"Spread: {signal.spread_pct:.2f}% | Confidence: {signal.confidence:.2f}"
         )
         
@@ -195,7 +196,7 @@ class PaperTradingBot:
         success = await self.trader.execute_signal(signal, config.TRADE_SIZE_USD)
         
         if success:
-            logger.info(f"✅ Paper trade executed for {signal.asset_id}")
+            logger.info(f"Paper trade executed for {signal.asset_id}")
     
     async def _print_periodic_stats(self):
         """Print stats every 60 seconds"""
@@ -213,15 +214,15 @@ class PaperTradingBot:
         runtime = datetime.now() - self.start_time if self.start_time else None
         
         logger.info("=" * 60)
-        logger.info("📈 PAPER TRADING STATS")
+        logger.info("PAPER TRADING STATS")
         logger.info("=" * 60)
-        logger.info(f"⏱️  Runtime: {runtime}")
-        logger.info(f"📊 Signals Generated: {self.signals_generated}")
-        logger.info(f"💰 Daily P&L: ${stats['daily_pnl']:.2f}")
-        logger.info(f"📈 Open P&L: ${stats['open_pnl']:.2f}")
-        logger.info(f"🎯 Win Rate: {stats['win_rate']:.1f}%")
-        logger.info(f"📊 Total Trades: {stats['total_trades']}")
-        logger.info(f"🔓 Open Positions: {stats['open_positions']}/{config.MAX_POSITIONS}")
+        logger.info(f"Runtime: {runtime}")
+        logger.info(f"Signals Generated: {self.signals_generated}")
+        logger.info(f"Daily P&L: ${stats['daily_pnl']:.2f}")
+        logger.info(f"Open P&L: ${stats['open_pnl']:.2f}")
+        logger.info(f"Win Rate: {stats['win_rate']:.1f}%")
+        logger.info(f"Total Trades: {stats['total_trades']}")
+        logger.info(f"Open Positions: {stats['open_positions']}/{config.MAX_POSITIONS}")
         logger.info("=" * 60)
 
 
