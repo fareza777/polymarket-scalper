@@ -204,7 +204,12 @@ class LiveBot:
                 ask_liq = sum(float(a.get("size", 0)) for a in asks[:3])
                 total_liq = bid_liq + ask_liq
                 
-                if spread_pct >= 1.0 and total_liq >= 500:
+                # Debug: Log all spreads (even small ones)
+                if self.scan_count <= 5 or spread_pct >= 0.5:  # First 5 scans or spread > 0.5%
+                    logger.info(f"Scan {token_id[:20]}... | Spread: {spread_pct:.3f}% | Liq: ${total_liq:.0f}")
+                
+                # Lowered threshold for more opportunities
+                if spread_pct >= 0.3 and total_liq >= 100:
                     self.signals_count += 1
                     
                     signal_data = {
