@@ -14,6 +14,10 @@ from paper_trader import PaperTrader
 from spread_detector import SpreadDetector, Signal
 
 # Setup logging
+# Create logs directory
+import os
+os.makedirs('logs', exist_ok=True)
+
 logging.basicConfig(
     level=getattr(logging, config.LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
