@@ -61,6 +61,11 @@ class LiveTrader:
     
     async def update_positions(self, markets):
         """Update P&L based on current market prices"""
+        if not self.positions:
+            logger.debug("No positions to update")
+            return
+        
+        logger.info(f"Updating {len(self.positions)} positions with {len(markets)} markets")
         updated = 0
         for token_id, pos in list(self.positions.items()):
             try:
@@ -73,9 +78,8 @@ class LiveTrader:
                             old_pnl = pos.get("pnl", 0)
                             pos["pnl"] = (float(current_price) - pos["entry"]) * pos["size"]
                             updated += 1
-                            # Log significant changes
-                            if abs(pos["pnl"] - old_pnl) > 0.1:
-                                logger.info(f"Position update: {pos['market'][:30]}... | P&L: ${pos['pnl']:.2f}")
+                                        # Log all changes for debugging
+                            logger.info(f"Position update: {pos['market'][:30]}... | Entry: ${pos['entry']:.4f} | Current: ${float(current_price):.4f} | P&L: ${pos['pnl']:.2f}")
                         found = True
                         break
                 if not found:
@@ -94,11 +98,11 @@ class LiveTrader:
             hold_time = (datetime.now() - pos["time"]).total_seconds() / 60
             
             exit_reason = None
-            if pnl > 0.50:
+            if pnl > 0.10:  # Lowered from $0.50 to $0.10 for easier testing
                 exit_reason = "take_profit"
-            elif pnl < -1.00:
+            elif pnl < -0.20:  # Lowered from -$1.00 to -$0.20
                 exit_reason = "stop_loss"
-            elif hold_time > 30:
+            elif hold_time > 5:  # Lowered from 30 min to 5 min for testing
                 exit_reason = "timeout"
             
             if exit_reason:
@@ -226,9 +230,9 @@ class LiveBot:
                 if self.scan_count <= 3 or spread_pct >= 0.3:
                     logger.info(f"Scan {market_name[:30]}... | Spread: {spread_pct:.3f}% | Liq: ${liquidity:.0f}")
                 
-                # Signal threshold
-                if spread_pct >= 0.3 and liquidity >= 100:
-                    self.signals_count += 1
+                # Signal threshold with max daily trades limit
+                MAX_DAILY_TRADES = 3  # Max 3 trades per day
+                if spread_pct >= 0.3 and liquidity >= 100 and len(self.trader.positions) < MAX_DAILY_TRADES:
                     
                     signal_data = {
                         'entry_price': best_bid,
