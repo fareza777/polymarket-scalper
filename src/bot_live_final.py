@@ -174,7 +174,8 @@ class LiveBot:
                 await self.trader.update_positions()
                 await self.trader.check_exits()
                 
-                if self.scan_count % 12 == 0:
+                # Print stats every minute OR if there are open positions
+                if self.scan_count % 12 == 0 or self.trader.positions:
                     self.print_stats()
                 
                 await asyncio.sleep(5)
@@ -230,11 +231,24 @@ class LiveBot:
         stats = self.trader.get_stats()
         runtime = datetime.now() - self.start_time if self.start_time else None
         
-        logger.info("-" * 70)
-        logger.info(f"Runtime: {runtime}")
+        # Calculate open positions P&L
+        open_positions_detail = []
+        for token_id, pos in self.trader.positions.items():
+            pnl = pos.get('pnl', 0)
+            open_positions_detail.append(f"{pos.get('market', 'Unknown')[:20]}...: ${pnl:.2f}")
+        
+        logger.info("=" * 70)
+        logger.info(f"STATS - Runtime: {runtime}")
         logger.info(f"Scans: {self.scan_count} | Signals: {self.signals_count} | Trades: {stats['trades']}")
-        logger.info(f"Open: {stats['open']} | Daily P&L: ${stats['daily_pnl']:.2f} | Win Rate: {stats['win_rate']:.1f}%")
-        logger.info("-" * 70)
+        logger.info(f"Daily P&L: ${stats['daily_pnl']:.2f} | Open P&L: ${stats['open_pnl']:.2f} | Total: ${stats['total_pnl']:.2f}")
+        logger.info(f"Win Rate: {stats['win_rate']:.1f}% | Open Positions: {stats['open']}")
+        
+        if open_positions_detail:
+            logger.info("Open Positions:")
+            for detail in open_positions_detail[:5]:  # Show max 5
+                logger.info(f"  - {detail}")
+        
+        logger.info("=" * 70)
     
     async def stop(self):
         self.running = False
