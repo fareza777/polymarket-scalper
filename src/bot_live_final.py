@@ -183,45 +183,45 @@ class LiveBot:
                 await asyncio.sleep(10)
     
     async def scan_opportunities(self):
-        for token_id, market_name in list(self.monitored_tokens.items())[:10]:
+        logger.info(f"Scan {self.scan_count}: Checking {len(self.markets)} markets...")
+        for market in self.markets[:20]:  # Check top 20 markets
             try:
-                orderbook = await self.api.get_orderbook(token_id)
-                if not orderbook:
+                # Use data directly from Gamma API (bestBid, bestAsk, spread)
+                best_bid = market.get("bestBid")
+                best_ask = market.get("bestAsk")
+                spread = market.get("spread", 0)
+                liquidity = market.get("liquidityNum", 0) or market.get("liquidity", 0)
+                market_name = self.api.get_market_display_name(market)
+                
+                if best_bid is None or best_ask is None:
                     continue
                 
-                bids = orderbook.get("bids", [])
-                asks = orderbook.get("asks", [])
-                
-                if not bids or not asks:
-                    continue
-                
-                best_bid = float(bids[0]["price"])
-                best_ask = float(asks[0]["price"])
+                # Calculate spread percentage
                 mid_price = (best_bid + best_ask) / 2
-                spread_pct = ((best_ask - best_bid) / mid_price) * 100
+                spread_pct = (spread / mid_price) * 100 if mid_price > 0 else 0
                 
-                bid_liq = sum(float(b.get("size", 0)) for b in bids[:3])
-                ask_liq = sum(float(a.get("size", 0)) for a in asks[:3])
-                total_liq = bid_liq + ask_liq
+                # Debug: Log all spreads
+                if self.scan_count <= 3 or spread_pct >= 0.3:
+                    logger.info(f"Scan {market_name[:30]}... | Spread: {spread_pct:.3f}% | Liq: ${liquidity:.0f}")
                 
-                # Debug: Log all spreads (even small ones)
-                if self.scan_count <= 5 or spread_pct >= 0.5:  # First 5 scans or spread > 0.5%
-                    logger.info(f"Scan {token_id[:20]}... | Spread: {spread_pct:.3f}% | Liq: ${total_liq:.0f}")
-                
-                # Lowered threshold for more opportunities
-                if spread_pct >= 0.3 and total_liq >= 100:
+                # Signal threshold
+                if spread_pct >= 0.3 and liquidity >= 100:
                     self.signals_count += 1
                     
                     signal_data = {
                         'entry_price': best_bid,
                         'target_price': best_ask,
                         'spread_pct': spread_pct,
-                        'liquidity': total_liq,
+                        'liquidity': liquidity,
                         'market_name': market_name
                     }
                     
                     logger.info(f"[SIGNAL] {market_name[:40]}... | Spread: {spread_pct:.2f}%")
-                    await self.trader.execute_signal(token_id, signal_data)
+                    
+                    # Use conditionId as token_id for tracking
+                    token_id = market.get("conditionId", "")
+                    if token_id:
+                        await self.trader.execute_signal(token_id, signal_data)
                 
             except Exception as e:
                 logger.debug(f"Error scanning: {e}")
