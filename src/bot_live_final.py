@@ -61,17 +61,30 @@ class LiveTrader:
     
     async def update_positions(self, markets):
         """Update P&L based on current market prices"""
+        updated = 0
         for token_id, pos in list(self.positions.items()):
             try:
                 # Find market by conditionId
+                found = False
                 for market in markets:
                     if market.get("conditionId") == token_id:
                         current_price = market.get("bestBid") or market.get("bestAsk")
                         if current_price:
+                            old_pnl = pos.get("pnl", 0)
                             pos["pnl"] = (float(current_price) - pos["entry"]) * pos["size"]
+                            updated += 1
+                            # Log significant changes
+                            if abs(pos["pnl"] - old_pnl) > 0.1:
+                                logger.info(f"Position update: {pos['market'][:30]}... | P&L: ${pos['pnl']:.2f}")
+                        found = True
                         break
+                if not found:
+                    logger.debug(f"Market not found for position: {token_id[:20]}...")
             except Exception as e:
                 logger.debug(f"Error updating position: {e}")
+        
+        if updated > 0:
+            logger.debug(f"Updated {updated} positions")
     
     async def check_exits(self) -> List[dict]:
         closed_trades = []
