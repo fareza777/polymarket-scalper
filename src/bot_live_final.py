@@ -59,13 +59,17 @@ class LiveTrader:
             "market": signal_data.get('market_name', 'Unknown')
         }
     
-    async def update_positions(self):
+    async def update_positions(self, markets):
+        """Update P&L based on current market prices"""
         for token_id, pos in list(self.positions.items()):
             try:
-                orderbook = await self.api.get_orderbook(token_id)
-                if orderbook and orderbook.get("asks"):
-                    current_price = float(orderbook["asks"][0]["price"])
-                    pos["pnl"] = (current_price - pos["entry"]) * pos["size"]
+                # Find market by conditionId
+                for market in markets:
+                    if market.get("conditionId") == token_id:
+                        current_price = market.get("bestBid") or market.get("bestAsk")
+                        if current_price:
+                            pos["pnl"] = (float(current_price) - pos["entry"]) * pos["size"]
+                        break
             except Exception as e:
                 logger.debug(f"Error updating position: {e}")
     
@@ -171,11 +175,15 @@ class LiveBot:
             try:
                 self.scan_count += 1
                 await self.scan_opportunities()
-                await self.trader.update_positions()
-                await self.trader.check_exits()
+                await self.trader.update_positions(self.markets)
+                closed_trades = await self.trader.check_exits()
+                
+                # Log closed trades
+                for trade in closed_trades:
+                    logger.info(f"[CLOSED] {trade['market'][:30]}... | P&L: ${trade['pnl']:.2f} | Reason: {trade['exit_reason']}")
                 
                 # Print stats every minute OR if there are open positions
-                if self.scan_count % 12 == 0 or self.trader.positions:
+                if self.scan_count % 12 == 0 or self.trader.positions or closed_trades:
                     self.print_stats()
                 
                 await asyncio.sleep(5)
@@ -231,16 +239,22 @@ class LiveBot:
         stats = self.trader.get_stats()
         runtime = datetime.now() - self.start_time if self.start_time else None
         
-        # Calculate open positions P&L
+        # Calculate open positions P&L (real-time)
         open_positions_detail = []
+        total_open_pnl = 0.0
         for token_id, pos in self.trader.positions.items():
             pnl = pos.get('pnl', 0)
+            total_open_pnl += pnl
             open_positions_detail.append(f"{pos.get('market', 'Unknown')[:20]}...: ${pnl:.2f}")
+        
+        # Update display values
+        display_open_pnl = total_open_pnl
+        display_total_pnl = stats['daily_pnl'] + total_open_pnl
         
         logger.info("=" * 70)
         logger.info(f"STATS - Runtime: {runtime}")
         logger.info(f"Scans: {self.scan_count} | Signals: {self.signals_count} | Trades: {stats['trades']}")
-        logger.info(f"Daily P&L: ${stats['daily_pnl']:.2f} | Open P&L: ${stats['open_pnl']:.2f} | Total: ${stats['total_pnl']:.2f}")
+        logger.info(f"Daily P&L: ${stats['daily_pnl']:.2f} | Open P&L: ${display_open_pnl:.2f} | Total: ${display_total_pnl:.2f}")
         logger.info(f"Win Rate: {stats['win_rate']:.1f}% | Open Positions: {stats['open']}")
         
         if open_positions_detail:
